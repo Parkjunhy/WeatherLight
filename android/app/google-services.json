@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "95818069662",
+    "project_id": "weatherlight-3e0ba",
+    "storage_bucket": "weatherlight-3e0ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:95818069662:android:d64f19d7934f79a300ad8f",
+        "android_client_info": {
+          "package_name": "com.example.weatherlight"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrcn48WfCPuKs7yKN5afX7-OVeB3KCVB0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
