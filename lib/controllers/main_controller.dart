@@ -40,6 +40,8 @@ class MainController extends GetxController {
 
   final region = '서울'.obs;
 
+  final weatherCondition = '맑음'.obs;
+
   final rainPercent = 0.30.obs; // 0..1 (display 30%)
   final rainThreshold = 0.50.obs; // 0..1
 
