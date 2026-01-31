@@ -86,7 +86,8 @@ def fetch_weather_thread():
     
     try:
         res = requests.get(url, timeout=15)
-        res.encoding = 'utf-8' 
+        # [수정됨] 기상청 텍스트 API는 euc-kr을 사용합니다. utf-8로 하면 깨집니다.
+        res.encoding = 'euc-kr' 
         
         lines = res.text.split('\n')
         code_to_name = {v: k for k, v in WEATHER_STATION_CODES.items()}
