@@ -30,8 +30,10 @@ jobs:
 
     # 4. (중요) 아까 Secrets에 넣어둔 Firebase 내용을 꺼내서 파일로 만들기
     - name: Create Firebase Key File
+      env:
+        FIREBASE_DATA: ${{ secrets.FIREBASE_KEY_JSON }}
       run: |
-        echo "${{ secrets.FIREBASE_KEY_JSON }}" > serviceAccountKey.json
+        echo "$FIREBASE_DATA" > serviceAccountKey.json
 
     # 5. 파이썬 실행하기 (비밀번호 환경변수로 넣어주기)
     - name: Run Python Script
