@@ -1,19 +1,21 @@
 import requests
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
-import threading
+import threading # 병렬 처리를 위한 라이브러리
 import time
-import os
-from urllib.parse import unquote
 
-CRED_PATH = 'serviceAccountKey.json'
+# ==========================================
+# 1. 설정 (Configuration)
+# ==========================================
+
+CRED_PATH = 'serviceAccountKey.json' 
 DB_URL = 'https://weatherlight-3e0ba-default-rtdb.firebaseio.com/'
 
-AIR_KEY = unquote(os.environ.get("AIR_KEY", ""))
-WEATHER_KEY = unquote(os.environ.get("WEATHER_KEY", ""))
+AIR_KEY = '59d012810b1d64a57500578040d9be42948497e4356491874f20a88f9514e871'
+WEATHER_KEY = 'K-REa-w3TuekRGvsN27n4A'
 
 TARGET_REGIONS = ['서울', '인천', '강원', '충북', '충남', '경북', '경남', '전북', '전남']
 
@@ -23,44 +25,36 @@ WEATHER_STATION_CODES = {
     '경남': '11H20201', '전북': '11F10201', '전남': '11F20501'
 }
 
+# 데이터를 담을 전역 변수 (스레드 공유용)
 global_air_data = {}
 global_weather_data = {}
 
-def init_firebase():
-    if not os.path.exists(CRED_PATH):
-        raise FileNotFoundError(f"File not found: {CRED_PATH}")
+# ==========================================
+# 2. 기능 함수 (스레드용으로 수정)
+# ==========================================
 
+def init_firebase():
     if not firebase_admin._apps:
         cred = credentials.Certificate(CRED_PATH)
         firebase_admin.initialize_app(cred, {'databaseURL': DB_URL})
-        print("Firebase Auth Success")
+        print("🔥 Firebase 인증 완료")
 
 def fetch_air_thread():
+    """미세먼지 데이터 수집 (스레드 1)"""
     global global_air_data
-    print("Fetching Air Data...")
+    print("   [Thread-1] 🏭 미세먼지 조회 시작...")
     
-    if not AIR_KEY:
-        return
-
-    kst_now = datetime.utcnow() + timedelta(hours=9)
-    today_date = kst_now.strftime("%Y-%m-%d")
-    
+    today_date = datetime.now().strftime("%Y-%m-%d")
     url = 'http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth'
     params = {
-        'serviceKey': AIR_KEY, 
-        'returnType': 'json', 
-        'numOfRows': '100',
-        'pageNo': '1', 
-        'searchDate': today_date, 
-        'InformCode': 'PM10'
+        'serviceKey': AIR_KEY, 'returnType': 'json', 'numOfRows': '100',
+        'pageNo': '1', 'searchDate': today_date, 'InformCode': 'PM10'
     }
     
     try:
         res = requests.get(url, params=params, timeout=10)
         if res.status_code == 200:
-            data = res.json()
-            items = data.get('response', {}).get('body', {}).get('items')
-            
+            items = res.json().get('response', {}).get('body', {}).get('items')
             if items:
                 raw_grades = items[0]['informGrade']
                 for item in raw_grades.split(','):
@@ -69,25 +63,19 @@ def fetch_air_thread():
                         region = r.strip()
                         if region == '영동': global_air_data['강원'] = g.strip()
                         elif region in TARGET_REGIONS: global_air_data[region] = g.strip()
-        else:
-            print(f"Air API Error: {res.status_code}")
-            
     except Exception as e:
-        print(f"Air Thread Error: {e}")
+        print(f"   [Thread-1] ⚠️ 에러: {e}")
+    print("   [Thread-1] ✅ 미세먼지 수신 완료")
 
 def fetch_weather_thread():
+    """날씨 데이터 수집 (스레드 2)"""
     global global_weather_data
-    print("Fetching Weather Data...")
+    print("   [Thread-2] 🌦️ 날씨 조회 시작...")
     
-    if not WEATHER_KEY:
-        return
-
     url = f'https://apihub.kma.go.kr/api/typ01/url/fct_afs_dl2.php?stn=108&tmfc=0&disp=0&help=1&authKey={WEATHER_KEY}'
     
     try:
         res = requests.get(url, timeout=15)
-        res.encoding = 'utf-8' 
-        
         lines = res.text.split('\n')
         code_to_name = {v: k for k, v in WEATHER_STATION_CODES.items()}
         
@@ -104,35 +92,44 @@ def fetch_weather_thread():
                             'condition': parts[17].replace('"', '')
                         }
     except Exception as e:
-        print(f"Weather Thread Error: {e}")
+        print(f"   [Thread-2] ⚠️ 에러: {e}")
+    print("   [Thread-2] ✅ 날씨 수신 완료")
+
+# ==========================================
+# 3. 메인 실행
+# ==========================================
 
 if __name__ == "__main__":
     start_time = time.time()
-    print("--- Weatherlight Server Start ---")
+    print("--- 🚀 Weatherlight Fast Server ---")
 
+    # 1. Firebase 접속
     try:
         init_firebase()
-    except Exception as e:
-        print(f"Init Error: {e}")
-        exit(1)
+    except:
+        print("❌ 키 파일 에러")
+        exit()
 
+    # 2. 병렬 요청 시작 (여기서 속도가 빨라짐)
     t1 = threading.Thread(target=fetch_air_thread)
     t2 = threading.Thread(target=fetch_weather_thread)
     
     t1.start()
     t2.start()
     
+    # 두 작업이 다 끝날 때까지 대기
     t1.join()
     t2.join()
     
-    kst_time = datetime.utcnow() + timedelta(hours=9)
-    
+    print(f"\n⏱️ 데이터 수집 소요 시간: {time.time() - start_time:.2f}초")
+
+    # 3. 데이터 병합 및 전송
     final_payload = {
-        "last_updated": kst_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "regions": {}
     }
 
-    print("Uploading to Firebase...")
+    print("📡 Firebase 업로드 중...")
     for region in TARGET_REGIONS:
         pm10 = global_air_data.get(region, "정보없음")
         w_info = global_weather_data.get(region, {'rain_prob': '0', 'condition': '정보없음'})
@@ -143,9 +140,9 @@ if __name__ == "__main__":
             "condition": w_info['condition']
         }
 
+    # 4. 최종 전송
     try:
         db.reference('weather_data').set(final_payload)
-        print("Upload Success")
+        print("✅ 전송 완료! (Success)")
     except Exception as e:
-        print(f"Upload Failed: {e}")
-        exit(1)
+        print(f"❌ 전송 실패: {e}")
