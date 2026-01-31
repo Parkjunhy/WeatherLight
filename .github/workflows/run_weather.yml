@@ -39,4 +39,5 @@ jobs:
         AIR_KEY: ${{ secrets.AIR_KEY }}        # 님 코드의 os.environ.get("AIR_KEY") 로 들어감
         WEATHER_KEY: ${{ secrets.WEATHER_KEY }} # 님 코드의 os.environ.get("WEATHER_KEY") 로 들어감
       run: |
-        python main.py
+        python weather_sync.py
+      
