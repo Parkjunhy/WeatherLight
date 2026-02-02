@@ -40,8 +40,15 @@ class MainController extends GetxController {
 
   final region = '서울'.obs;
 
+  // Monitoring mode: 'rain' or 'dust'
+  final monitorMode = 'rain'.obs;
+
+  // Weather meta from /weather_data
+  final weatherLastUpdated = ''.obs;
+
   final weatherCondition = '맑음'.obs;
 
+  // Live rain probability (0..1)
   final rainPercent = 0.30.obs; // 0..1 (display 30%)
   final rainThreshold = 0.50.obs; // 0..1
 
@@ -64,7 +71,7 @@ class MainController extends GetxController {
   }
 
   Future<void> _loadInitialData() async {
-    // Load status
+    // 1. Load status
     final status = await _dbService.getStatus();
     if (status != null) {
       _isSyncingFromDb = true;
@@ -82,7 +89,7 @@ class MainController extends GetxController {
       _isSyncingFromDb = false;
     }
 
-    // Load settings
+    // 2. Load settings
     final settings = await _dbService.getSettings();
     if (settings != null) {
       _isSyncingFromDb = true;
@@ -102,7 +109,6 @@ class MainController extends GetxController {
       if (settings['region'] != null) {
         final regionData = settings['region'] as Map;
         if (regionData['location'] != null) {
-          // Convert English name from DB to Korean for UI
           final englishName = regionData['location'] as String;
           region.value = _englishToKoreanRegion(englishName);
         }
@@ -119,13 +125,27 @@ class MainController extends GetxController {
           dustLabel.value = _dustLabelFor(dustThreshold.value);
         }
       }
+
+      // Monitor mode
+      if (settings['monitor_mode'] != null) {
+        final modeData = settings['monitor_mode'] as Map;
+        if (modeData['mode'] != null) {
+          monitorMode.value = modeData['mode'] as String; // "rain" | "dust"
+        }
+      }
       
       _isSyncingFromDb = false;
     }
 
-    // Load live data
+    // 3. Load weather data from Python bot (weather_data)
+    await _loadWeatherDataForRegion();
+
+    // 4. Load live data (if used specifically)
     final liveData = await _dbService.getLiveData();
     if (liveData != null) {
+      // If live_data has newer values, they might overwrite python data
+      // but usually python bot writes to weather_data. 
+      // This part is kept for compatibility if ESP32 writes to live_data.
       if (liveData['rain_probability'] != null) {
         rainPercent.value = (liveData['rain_probability'] as int) / 100.0;
       }
@@ -178,9 +198,10 @@ class MainController extends GetxController {
       if (data['region'] != null) {
         final regionData = data['region'] as Map;
         if (regionData['location'] != null) {
-          // Convert English name from DB to Korean for UI
           final englishName = regionData['location'] as String;
           region.value = _englishToKoreanRegion(englishName);
+          // Region updated externally -> reload weather data
+          _loadWeatherDataForRegion();
         }
       }
       
@@ -193,6 +214,14 @@ class MainController extends GetxController {
         if (thresholds['dust_threshold'] != null) {
           dustThreshold.value = (thresholds['dust_threshold'] as int) / 100.0;
           dustLabel.value = _dustLabelFor(dustThreshold.value);
+        }
+      }
+
+      // Monitor mode
+      if (data['monitor_mode'] != null) {
+        final modeData = data['monitor_mode'] as Map;
+        if (modeData['mode'] != null) {
+          monitorMode.value = modeData['mode'] as String;
         }
       }
       
@@ -210,6 +239,40 @@ class MainController extends GetxController {
         dustLabel.value = data['dust_status'] as String;
       }
     });
+  }
+
+  Future<void> _loadWeatherDataForRegion() async {
+    final data = await _dbService.getWeatherData();
+    if (data == null) return;
+
+    // 최근 업데이트 시간
+    if (data['last_updated'] != null) {
+      weatherLastUpdated.value = data['last_updated'] as String;
+    }
+
+    final regions = data['regions'];
+    if (regions is! Map) return;
+
+    final regionName = region.value; // "서울", "강원" 등
+    final regionData = regions[regionName];
+    if (regionData is! Map) return;
+
+    // 현재 기상 상태
+    if (regionData['condition'] != null) {
+      weatherCondition.value = regionData['condition'] as String;
+    }
+
+    // 강수확률 (문자열로 들어오므로 int로 파싱)
+    if (regionData['rain_prob'] != null) {
+      final rpStr = regionData['rain_prob'] as String;
+      final rp = int.tryParse(rpStr) ?? 0;
+      rainPercent.value = (rp / 100.0).clamp(0.0, 1.0);
+    }
+
+    // 미세먼지 상태 (pm10)
+    if (regionData['pm10'] != null) {
+      dustLabel.value = regionData['pm10'] as String;
+    }
   }
 
   void _setColorFromHex(String hex) {
@@ -348,6 +411,8 @@ class MainController extends GetxController {
       final englishName = _koreanToEnglishRegion(v);
       await _dbService.updateRegion(englishName);
     }
+    // Update weather data for new region
+    await _loadWeatherDataForRegion();
   }
 
   String _koreanToEnglishRegion(String korean) {
@@ -378,6 +443,13 @@ class MainController extends GetxController {
       'Jeonnam': '전남',
     };
     return mapping[english] ?? english;
+  }
+
+  Future<void> setMonitorMode(String mode) async {
+    monitorMode.value = mode; // "rain" or "dust"
+    if (!_isSyncingFromDb) {
+      await _dbService.updateMonitorMode(mode);
+    }
   }
 
   Future<void> setRainThreshold(double v) async {
@@ -429,4 +501,3 @@ class MainController extends GetxController {
     minute.value = minuteValue;
   }
 }
-

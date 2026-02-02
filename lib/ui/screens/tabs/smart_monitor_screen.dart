@@ -118,12 +118,11 @@ class SmartMonitorScreen extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            // [블록 2] 오늘 날씨 (단 고정됨!)
+            // [블록 2] 모드 선택 (터치 영역 격리 문제 해결됨)
             NeumorphicCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. 타이틀
                   Row(
                     children: [
                       Container(
@@ -134,13 +133,13 @@ class SmartMonitorScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(
-                          Icons.wb_sunny_rounded,
+                          Icons.monitor_rounded,
                           color: AppColors.accent,
                         ),
                       ),
                       const SizedBox(width: 14),
                       Text(
-                        '오늘 날씨',
+                        '모드 선택',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                               fontSize: 20,
@@ -149,12 +148,195 @@ class SmartMonitorScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  
+                  // 모드 선택 토글 버튼
+                  Container(
+                    height: 52, // 높이 고정으로 레이아웃 안정화
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F4F8), // 전체 트랙 배경색
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Obx(() {
+                      final isRain = c.monitorMode.value == 'rain';
+                      
+                      return Row(
+                        children: [
+                          // 1. 강수확률 버튼
+                          Expanded(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: isRain ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: isRain
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ]
+                                    : [],
+                              ),
+                              // [중요] Ripple 효과가 둥근 모서리 밖으로 나가지 않도록 자름
+                              clipBehavior: Clip.hardEdge, 
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => c.setMonitorMode('rain'),
+                                  borderRadius: BorderRadius.circular(10),
+                                  splashColor: const Color(0xFFDEE6F2), // 은은한 회색
+                                  highlightColor: const Color(0xFFEFF4F9),
+                                  child: Center(
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.water_drop_rounded,
+                                          size: 18,
+                                          color: isRain ? AppColors.accent : AppColors.subText,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '강수확률',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: isRain ? AppColors.text : AppColors.subText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(width: 4),
+
+                          // 2. 미세먼지 버튼
+                          Expanded(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: !isRain ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: !isRain
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ]
+                                    : [],
+                              ),
+                              // [중요] Ripple 효과 격리
+                              clipBehavior: Clip.hardEdge,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => c.setMonitorMode('dust'),
+                                  borderRadius: BorderRadius.circular(10),
+                                  splashColor: const Color(0xFFDEE6F2),
+                                  highlightColor: const Color(0xFFEFF4F9),
+                                  child: Center(
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.grain_rounded,
+                                          size: 18,
+                                          color: !isRain ? AppColors.accent : AppColors.subText,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '미세먼지',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: !isRain ? AppColors.text : AppColors.subText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '선택한 모드의 알림값이 초과되면 LED가 작동합니다.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.subText,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // [블록 3] 오늘 날씨
+            NeumorphicCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF3FF),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.wb_sunny_rounded,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '오늘 날씨',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 20,
+                                      letterSpacing: -0.2,
+                                    ),
+                              ),
+                              Obx(() => Text(
+                                c.weatherLastUpdated.value.isEmpty 
+                                  ? '업데이트 중...' 
+                                  : '최근 업데이트 : ${_formatTime(c.weatherLastUpdated.value)}',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: AppColors.subText,
+                                      fontSize: 11,
+                                    ),
+                              )),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 20),
 
-                  // 2. 정보 표시 (Expanded로 공간 고정)
+                  // 3단 정보 표시
                   Obx(() => Row(
                         children: [
-                          // [1단] 날씨 상태 (1/3 차지)
                           Expanded(
                             child: Column(
                               children: [
@@ -178,15 +360,11 @@ class SmartMonitorScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-
-                          // 구분선 (고정 폭)
                           Container(
                             width: 1.5,
                             height: 40,
                             color: const Color(0xFFE6EAF2),
                           ),
-
-                          // [2단] 강수 확률 (1/3 차지)
                           Expanded(
                             child: Column(
                               children: [
@@ -210,15 +388,11 @@ class SmartMonitorScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-
-                          // 구분선 (고정 폭)
                           Container(
                             width: 1.5,
                             height: 40,
                             color: const Color(0xFFE6EAF2),
                           ),
-
-                          // [3단] 미세먼지 상태 (1/3 차지)
                           Expanded(
                             child: Column(
                               children: [
@@ -257,7 +431,7 @@ class SmartMonitorScreen extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            // [블록 3] 강수 확률 모니터
+            // [블록 4] 강수 확률 모니터
             NeumorphicCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +446,7 @@ class SmartMonitorScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(
-                          Icons.umbrella_rounded,
+                          Icons.beach_access_rounded, 
                           color: AppColors.accent,
                         ),
                       ),
@@ -325,7 +499,7 @@ class SmartMonitorScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            // [블록 4] 미세먼지 모니터
+            // [블록 5] 미세먼지 모니터
             NeumorphicCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,6 +583,19 @@ class SmartMonitorScreen extends StatelessWidget {
   }
 
   // 헬퍼 함수
+  String _formatTime(String dateTimeStr) {
+    try {
+      final parts = dateTimeStr.split(' ');
+      if (parts.length > 1) {
+        final timeParts = parts[1].split(':');
+        return '${timeParts[0]}:${timeParts[1]}';
+      }
+      return dateTimeStr;
+    } catch (e) {
+      return dateTimeStr;
+    }
+  }
+
   static String _dustLabelFor(double v) {
     if (v <= 0.0) return '매우나쁨';
     if (v <= 0.25) return '나쁨';

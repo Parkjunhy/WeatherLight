@@ -4,11 +4,13 @@ class DatabaseService {
   static const String _statusPath = 'weatherlight/status';
   static const String _settingsPath = 'weatherlight/settings';
   static const String _liveDataPath = 'weatherlight/live_data';
+  static const String _weatherDataPath = 'weather_data'; // Python 봇 데이터 경로
   
   // Initialize Firebase Database references
   final DatabaseReference _statusRef = FirebaseDatabase.instance.ref(_statusPath);
   final DatabaseReference _settingsRef = FirebaseDatabase.instance.ref(_settingsPath);
   final DatabaseReference _liveDataRef = FirebaseDatabase.instance.ref(_liveDataPath);
+  final DatabaseReference _weatherDataRef = FirebaseDatabase.instance.ref(_weatherDataPath);
 
   // ========== STATUS (Power, Brightness, Color) ==========
   
@@ -43,7 +45,7 @@ class DatabaseService {
     return Map<String, dynamic>.from(snapshot.value as Map);
   }
 
-  // ========== SETTINGS (Schedule, Region, Thresholds) ==========
+  // ========== SETTINGS (Schedule, Region, Thresholds, MonitorMode) ==========
 
   // Listen to settings changes
   Stream<Map<String, dynamic>?> getSettingsStream() {
@@ -84,6 +86,13 @@ class DatabaseService {
     });
   }
 
+  // Update monitor mode ("rain" or "dust")
+  Future<void> updateMonitorMode(String mode) async {
+    await _settingsRef.child('monitor_mode').set({
+      'mode': mode,
+    });
+  }
+
   // ========== LIVE DATA (Read-only, real-time updates) ==========
 
   // Listen to live weather data changes
@@ -98,6 +107,15 @@ class DatabaseService {
   // Get live data once
   Future<Map<String, dynamic>?> getLiveData() async {
     final snapshot = await _liveDataRef.get();
+    if (snapshot.value == null) return null;
+    return Map<String, dynamic>.from(snapshot.value as Map);
+  }
+
+  // ========== WEATHER DATA (From Python Bot) ==========
+
+  // Get python bot weather data once
+  Future<Map<String, dynamic>?> getWeatherData() async {
+    final snapshot = await _weatherDataRef.get();
     if (snapshot.value == null) return null;
     return Map<String, dynamic>.from(snapshot.value as Map);
   }
