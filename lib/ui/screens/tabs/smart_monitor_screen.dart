@@ -118,7 +118,7 @@ class SmartMonitorScreen extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            // [블록 2] 모드 선택 (터치 영역 격리 문제 해결됨)
+            // [블록 2] 모드 선택 (렌더링 최적화 적용됨)
             NeumorphicCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,9 +152,9 @@ class SmartMonitorScreen extends StatelessWidget {
                   
                   // 모드 선택 토글 버튼
                   Container(
-                    height: 52, // 높이 고정으로 레이아웃 안정화
+                    height: 56, // 터치 영역 확보를 위해 높이 고정
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F4F8), // 전체 트랙 배경색
+                      color: const Color(0xFFF0F4F8),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.all(4),
@@ -170,6 +170,7 @@ class SmartMonitorScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: isRain ? Colors.white : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
+                                // 그림자는 밖으로 퍼지게 둠 (Clip 금지)
                                 boxShadow: isRain
                                     ? [
                                         BoxShadow(
@@ -180,14 +181,14 @@ class SmartMonitorScreen extends StatelessWidget {
                                       ]
                                     : [],
                               ),
-                              // [중요] Ripple 효과가 둥근 모서리 밖으로 나가지 않도록 자름
-                              clipBehavior: Clip.hardEdge, 
+                              // Material을 내부에 두어 Ripple만 안쪽으로 잘리게 함 (Clip.antiAlias)
                               child: Material(
                                 color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                clipBehavior: Clip.antiAlias, // 여기서 터치 효과만 자름
                                 child: InkWell(
                                   onTap: () => c.setMonitorMode('rain'),
-                                  borderRadius: BorderRadius.circular(10),
-                                  splashColor: const Color(0xFFDEE6F2), // 은은한 회색
+                                  splashColor: const Color(0xFFDEE6F2),
                                   highlightColor: const Color(0xFFEFF4F9),
                                   child: Center(
                                     child: Row(
@@ -233,13 +234,12 @@ class SmartMonitorScreen extends StatelessWidget {
                                       ]
                                     : [],
                               ),
-                              // [중요] Ripple 효과 격리
-                              clipBehavior: Clip.hardEdge,
                               child: Material(
                                 color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                clipBehavior: Clip.antiAlias,
                                 child: InkWell(
                                   onTap: () => c.setMonitorMode('dust'),
-                                  borderRadius: BorderRadius.circular(10),
                                   splashColor: const Color(0xFFDEE6F2),
                                   highlightColor: const Color(0xFFEFF4F9),
                                   child: Center(
@@ -283,7 +283,7 @@ class SmartMonitorScreen extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            // [블록 3] 오늘 날씨
+            // [블록 3] 오늘 날씨 (수정됨: weatherDustStatus 사용)
             NeumorphicCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,8 +407,9 @@ class SmartMonitorScreen extends StatelessWidget {
                                       ),
                                 ),
                                 const SizedBox(height: 6),
+                                // [수정] 실제 날씨 데이터 표시 (설정값 아님)
                                 Text(
-                                  c.dustLabel.value,
+                                  c.weatherDustStatus.value,
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context)
                                       .textTheme
@@ -416,7 +417,7 @@ class SmartMonitorScreen extends StatelessWidget {
                                       ?.copyWith(
                                         fontWeight: FontWeight.w800,
                                         fontSize: 20,
-                                        color: _getDustColor(c.dustLabel.value),
+                                        color: _getDustColor(c.weatherDustStatus.value),
                                       ),
                                 ),
                               ],
@@ -499,7 +500,7 @@ class SmartMonitorScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            // [블록 5] 미세먼지 모니터
+            // [블록 5] 미세먼지 모니터 (수정됨: 독립적인 라벨 표시)
             NeumorphicCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,8 +532,9 @@ class SmartMonitorScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   Obx(() {
+                    // [수정] 슬라이더 값에 따라 라벨 즉시 계산 (날씨 변수와 무관)
                     return Text(
-                      c.dustLabel.value,
+                      _dustLabelFor(c.dustThreshold.value),
                       style: Theme.of(context)
                           .textTheme
                           .displaySmall
@@ -582,7 +584,6 @@ class SmartMonitorScreen extends StatelessWidget {
     );
   }
 
-  // 헬퍼 함수
   String _formatTime(String dateTimeStr) {
     try {
       final parts = dateTimeStr.split(' ');

@@ -49,11 +49,13 @@ class MainController extends GetxController {
   final weatherCondition = '맑음'.obs;
 
   // Live rain probability (0..1)
-  final rainPercent = 0.30.obs; // 0..1 (display 30%)
-  final rainThreshold = 0.50.obs; // 0..1
+  final rainPercent = 0.30.obs; 
+  final rainThreshold = 0.50.obs; 
 
-  final dustLabel = '좋음'.obs;
-  final dustThreshold = 0.5.obs; // 0..1 (mapped to labels in UI)
+  // [수정됨] 실제 날씨 데이터용 변수 (모니터 설정값과 분리됨)
+  final weatherDustStatus = '좋음'.obs; 
+  
+  final dustThreshold = 0.5.obs; 
 
   @override
   void onInit() {
@@ -122,7 +124,6 @@ class MainController extends GetxController {
         }
         if (thresholds['dust_threshold'] != null) {
           dustThreshold.value = (thresholds['dust_threshold'] as int) / 100.0;
-          dustLabel.value = _dustLabelFor(dustThreshold.value);
         }
       }
 
@@ -130,27 +131,25 @@ class MainController extends GetxController {
       if (settings['monitor_mode'] != null) {
         final modeData = settings['monitor_mode'] as Map;
         if (modeData['mode'] != null) {
-          monitorMode.value = modeData['mode'] as String; // "rain" | "dust"
+          monitorMode.value = modeData['mode'] as String;
         }
       }
       
       _isSyncingFromDb = false;
     }
 
-    // 3. Load weather data from Python bot (weather_data)
+    // 3. Load weather data from Python bot
     await _loadWeatherDataForRegion();
 
     // 4. Load live data (if used specifically)
     final liveData = await _dbService.getLiveData();
     if (liveData != null) {
-      // If live_data has newer values, they might overwrite python data
-      // but usually python bot writes to weather_data. 
-      // This part is kept for compatibility if ESP32 writes to live_data.
       if (liveData['rain_probability'] != null) {
         rainPercent.value = (liveData['rain_probability'] as int) / 100.0;
       }
       if (liveData['dust_status'] != null) {
-        dustLabel.value = liveData['dust_status'] as String;
+        // [수정됨] 실제 날씨 변수에 할당
+        weatherDustStatus.value = liveData['dust_status'] as String;
       }
     }
   }
@@ -200,7 +199,6 @@ class MainController extends GetxController {
         if (regionData['location'] != null) {
           final englishName = regionData['location'] as String;
           region.value = _englishToKoreanRegion(englishName);
-          // Region updated externally -> reload weather data
           _loadWeatherDataForRegion();
         }
       }
@@ -213,7 +211,6 @@ class MainController extends GetxController {
         }
         if (thresholds['dust_threshold'] != null) {
           dustThreshold.value = (thresholds['dust_threshold'] as int) / 100.0;
-          dustLabel.value = _dustLabelFor(dustThreshold.value);
         }
       }
 
@@ -228,7 +225,7 @@ class MainController extends GetxController {
       _isSyncingFromDb = false;
     });
 
-    // Listen to live data changes (read-only)
+    // Listen to live data changes
     _liveDataSubscription = _dbService.getLiveDataStream().listen((data) {
       if (data == null) return;
       
@@ -236,7 +233,8 @@ class MainController extends GetxController {
         rainPercent.value = (data['rain_probability'] as int) / 100.0;
       }
       if (data['dust_status'] != null) {
-        dustLabel.value = data['dust_status'] as String;
+        // [수정됨] 실제 날씨 변수에 할당
+        weatherDustStatus.value = data['dust_status'] as String;
       }
     });
   }
@@ -245,7 +243,6 @@ class MainController extends GetxController {
     final data = await _dbService.getWeatherData();
     if (data == null) return;
 
-    // 최근 업데이트 시간
     if (data['last_updated'] != null) {
       weatherLastUpdated.value = data['last_updated'] as String;
     }
@@ -253,37 +250,34 @@ class MainController extends GetxController {
     final regions = data['regions'];
     if (regions is! Map) return;
 
-    final regionName = region.value; // "서울", "강원" 등
+    final regionName = region.value;
     final regionData = regions[regionName];
     if (regionData is! Map) return;
 
-    // 현재 기상 상태
     if (regionData['condition'] != null) {
       weatherCondition.value = regionData['condition'] as String;
     }
 
-    // 강수확률 (문자열로 들어오므로 int로 파싱)
     if (regionData['rain_prob'] != null) {
       final rpStr = regionData['rain_prob'] as String;
       final rp = int.tryParse(rpStr) ?? 0;
       rainPercent.value = (rp / 100.0).clamp(0.0, 1.0);
     }
 
-    // 미세먼지 상태 (pm10)
     if (regionData['pm10'] != null) {
-      dustLabel.value = regionData['pm10'] as String;
+      // [수정됨] 실제 날씨 변수에 할당
+      weatherDustStatus.value = regionData['pm10'] as String;
     }
   }
 
   void _setColorFromHex(String hex) {
     try {
-      // Remove # if present
       final cleanHex = hex.replaceAll('#', '');
       final colorValue = int.parse(cleanHex, radix: 16);
       final color = Color(0xFF000000 | colorValue);
       setSelectedColor(color);
     } catch (e) {
-      // Invalid hex, ignore
+      // Invalid hex
     }
   }
 
@@ -349,7 +343,6 @@ class MainController extends GetxController {
   }
 
   void _setTimeFromString(String timeStr, {required bool isStart}) {
-    // Parse "HH:mm" format
     final parts = timeStr.split(':');
     if (parts.length != 2) return;
     
@@ -407,11 +400,9 @@ class MainController extends GetxController {
   Future<void> setRegion(String v) async {
     region.value = v;
     if (!_isSyncingFromDb) {
-      // Convert Korean name to English for database
       final englishName = _koreanToEnglishRegion(v);
       await _dbService.updateRegion(englishName);
     }
-    // Update weather data for new region
     await _loadWeatherDataForRegion();
   }
 
@@ -446,7 +437,7 @@ class MainController extends GetxController {
   }
 
   Future<void> setMonitorMode(String mode) async {
-    monitorMode.value = mode; // "rain" or "dust"
+    monitorMode.value = mode;
     if (!_isSyncingFromDb) {
       await _dbService.updateMonitorMode(mode);
     }
@@ -463,7 +454,7 @@ class MainController extends GetxController {
 
   Future<void> setDustThreshold(double v) async {
     dustThreshold.value = v.clamp(0.0, 1.0);
-    dustLabel.value = _dustLabelFor(dustThreshold.value);
+    // [수정됨] 더 이상 날씨 상태 변수(weatherDustStatus)를 건드리지 않음
     if (!_isSyncingFromDb) {
       final rainInt = (rainThreshold.value * 100).round();
       final dustInt = (dustThreshold.value * 100).round();
@@ -471,17 +462,7 @@ class MainController extends GetxController {
     }
   }
 
-  static String _dustLabelFor(double v) {
-    // snapped (divisions=4) => 0.0, 0.25, 0.5, 0.75, 1.0
-    if (v <= 0.0) return '매우나쁨';
-    if (v <= 0.25) return '나쁨';
-    if (v <= 0.5) return '보통';
-    if (v <= 0.75) return '좋음';
-    return '매우좋음';
-  }
-
   static (int, int) _to24(bool isAm, int hour12, int minute) {
-    // hour12: 1..12
     var h = hour12 % 12;
     if (!isAm) h += 12;
     return (h, minute);

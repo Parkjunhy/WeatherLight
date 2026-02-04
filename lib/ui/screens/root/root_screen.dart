@@ -16,6 +16,7 @@ class RootScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
+      extendBody: true, // [필수] 이 옵션이 있어야 탭바가 내용 위에 둥둥 떠 있는 연출이 가능합니다.
       body: Obx(() {
         return IndexedStack(
           index: c.tabIndex.value,
@@ -34,4 +35,3 @@ class RootScreen extends StatelessWidget {
     );
   }
 }
-

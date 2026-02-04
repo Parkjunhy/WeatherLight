@@ -17,21 +17,23 @@ class WeatherBottomNav extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+        // [핵심 수정] top: 24를 주어 박스를 아래로 밀어내림 (잘림 방지)
+        // bottom: 24를 주어 하단에서도 적당히 띄움
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
         child: Container(
-          height: 66,
+          height: 72, // 박스 높이 확보
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: const [
               BoxShadow(
                 color: AppColors.shadowDark,
-                blurRadius: 22,
-                offset: Offset(0, 12),
+                blurRadius: 24,
+                offset: Offset(0, 8),
               ),
             ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
               Expanded(
@@ -80,15 +82,15 @@ class _NavItem extends StatelessWidget {
       child: Center(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: active ? AppColors.navy : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: fg, size: 20),
+              Icon(icon, color: fg, size: 22),
               const SizedBox(width: 8),
               Text(
                 label,
@@ -105,4 +107,3 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
-
