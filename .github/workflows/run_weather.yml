@@ -1,45 +1,45 @@
-name: Weather Bot Run
+# name: Weather Bot Run
 
-# 언제 실행할까요?
-on:
-  push:                # 코드를 수정해서 올릴 때마다 실행
-    branches: [ "master", "main" ]
-  workflow_dispatch:   # 깃허브 홈페이지에서 버튼 눌러서 수동 실행 가능하게 함
-  schedule:
-    - cron: '0 * * * *' # (선택) 매 시간 0분마다 자동 실행 (원하면 쓰세요)
+# # 언제 실행할까요?
+# on:
+#   push:                # 코드를 수정해서 올릴 때마다 실행
+#     branches: [ "master", "main" ]
+#   workflow_dispatch:   # 깃허브 홈페이지에서 버튼 눌러서 수동 실행 가능하게 함
+#   schedule:
+#     - cron: '0 * * * *' # (선택) 매 시간 0분마다 자동 실행 (원하면 쓰세요)
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
 
-    steps:
-    # 1. 내 코드 내려받기
-    - uses: actions/checkout@v4
+#     steps:
+#     # 1. 내 코드 내려받기
+#     - uses: actions/checkout@v4
 
-    # 2. 파이썬 3.9 설치하기
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
+#     # 2. 파이썬 3.9 설치하기
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: '3.9'
 
-    # 3. 필요한 라이브러리 설치 (requests, firebase_admin)
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests firebase-admin
+#     # 3. 필요한 라이브러리 설치 (requests, firebase_admin)
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install requests firebase-admin
 
-    # 4. (중요) 아까 Secrets에 넣어둔 Firebase 내용을 꺼내서 파일로 만들기
-    - name: Create Firebase Key File
-      env:
-        FIREBASE_DATA: ${{ secrets.FIREBASE_KEY_JSON }}
-      run: |
-        echo "$FIREBASE_DATA" > serviceAccountKey.json
+#     # 4. (중요) 아까 Secrets에 넣어둔 Firebase 내용을 꺼내서 파일로 만들기
+#     - name: Create Firebase Key File
+#       env:
+#         FIREBASE_DATA: ${{ secrets.FIREBASE_KEY_JSON }}
+#       run: |
+#         echo "$FIREBASE_DATA" > serviceAccountKey.json
 
-    # 5. 파이썬 실행하기 (비밀번호 환경변수로 넣어주기)
-    - name: Run Python Script
-      env:
-        AIR_KEY: ${{ secrets.AIR_KEY }}        # 님 코드의 os.environ.get("AIR_KEY") 로 들어감
-        WEATHER_KEY: ${{ secrets.WEATHER_KEY }} # 님 코드의 os.environ.get("WEATHER_KEY") 로 들어감
-      run: |
-        python weather_sync.py
+#     # 5. 파이썬 실행하기 (비밀번호 환경변수로 넣어주기)
+#     - name: Run Python Script
+#       env:
+#         AIR_KEY: ${{ secrets.AIR_KEY }}        # 님 코드의 os.environ.get("AIR_KEY") 로 들어감
+#         WEATHER_KEY: ${{ secrets.WEATHER_KEY }} # 님 코드의 os.environ.get("WEATHER_KEY") 로 들어감
+#       run: |
+#         python weather_sync.py
       
